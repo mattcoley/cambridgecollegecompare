@@ -21,8 +21,10 @@ def find_college_info(college_name):
     request = urllib2.urlopen(college_url)
     html_page = request.read()
 
+    # Convert the html into something we can parse
     tree = html.fromstring(html_page)
 
+    # X path to relevant data in html page
     base_path = '//*[@id="block-views-college-views-block-3"]/div/div/div/div/div/div[5]/div[2]/div[{}]/text()'
     return {'num_undergrad': label_to_num(tree.xpath(base_path.format(1))),
             'num_year': label_to_num(tree.xpath(base_path.format(2))),
@@ -31,6 +33,7 @@ def find_college_info(college_name):
 
 
 def label_to_num(label):
+    # Go from ['c120 undergraduates'] to 120
     return int(label[0].split(' ')[0].replace('c', '')) or 0
 
 def main():
