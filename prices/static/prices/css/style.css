@@ -1,0 +1,42 @@
+.dataTables_filter {
+   display: none;
+}
+
+.input-group {
+	opacity: 1;
+	background-color: transparent;
+	color: white;
+}
+
+.input-group-addon {
+	color: white;
+	background-color: transparent;
+}
+#college_search {
+	background-color: transparent;
+	color: white !important;
+	opacity: 1;
+}
+
+
+tr {
+	background-color: transparent !important;
+}
+
+thead {
+	font-weight: bolder;
+}
+
+input {
+	color: white;
+}
+
+div.dataTables_wrapper { 
+	min-height: 300px; 
+}
+
+#feedback_buttons button {
+	color: white;
+	border-style: 1px solid white !important;
+	background-color: transparent;
+}
