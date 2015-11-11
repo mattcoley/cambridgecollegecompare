@@ -1,22 +1,55 @@
 from lxml import html
-import requests
 import urllib2
-import sys
+import sys, os
+import django
 
-COLLEGE_LIST = ["Christ's College", "Churchill College", "Clare College"]
+# Path additions to allow import of Django models
+SETTINGS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../..')
+sys.path.append(SETTINGS_PATH)
+os.environ['DJANGO_SETTINGS_MODULE'] = 'pricecompare.settings'
+django.setup()
+
+from prices.models import College
+
 BASE_URL = 'http://www.undergraduate.study.cam.ac.uk/colleges/'
 
+# Annoying cases where colleges don't fit typical naming conventions
+COLLEGE_EXCLUSIONS = {
+        'Hughes': 'Hughes Hall',
+        'Lucy Cavendish': 'Lucy Cavendish',
+        'Peterhouse': 'Peterhouse',
+        'Trinity Hall': 'Trinity Hall'
+}
+
+# Colleges with extra text in their description
+ANNOYING_COLLEGES = ['hughes-hall', 'lucy-cavendish', 'murray-edwards-college', 'newnham-college', 'st-edmunds-college', 'wolfson-college']
+
+# Collges that are so different they require different parsing
+SPECIAL_COLLEGES = ['peterhouse', 'sidney-sussex-college']
 
 def run_scraper():
-    # Remove unwanted punctuation, spaces, and capitalization (Christ's College -> christs-college)
-    colleges = map(lambda val: val.replace("'", ''), COLLEGE_LIST)
-    colleges = map(lambda val : val.replace(' ', '-'), colleges)
-    colleges = map(lambda val: val.lower(), colleges)
+    # Get the college names from the database
+    college_list = College.objects.order_by('college_name')
+    college_names = [col.college_name for col in college_list]
 
-    college_data = {college_name: find_college_info(college_name) for college_name in colleges}
+    # Fix college naming convention annoyances
+    college_names = map(lambda val: '{} college'.format(val) if val not in COLLEGE_EXCLUSIONS else COLLEGE_EXCLUSIONS[val], college_names)
+
+    # Remove unwanted punctuation, spaces, and capitalization (Christ's College -> christs-college)
+    college_names = map(lambda val: val.replace("'", ''), college_names)
+    college_names = map(lambda val : val.replace(' ', '-'), college_names)
+    college_names = map(lambda val: val.lower(), college_names)
+
+    # Slight fix for colleges with '&'s in them
+    college_names = map(lambda val: val.replace('&', 'and'), college_names)
+
+    college_data = {name: find_college_info(name) for name in college_names}
     print college_data
+    # Need to check and save data here check_and_save_data(college_data)
+
 
 def find_college_info(college_name):
+    # Get the html of the college page on the Cambridge website
     college_url = BASE_URL + college_name
     request = urllib2.urlopen(college_url)
     html_page = request.read()
@@ -24,13 +57,20 @@ def find_college_info(college_name):
     # Convert the html into something we can parse
     tree = html.fromstring(html_page)
 
+    # Mature colleges have extra text that we must skip to get to cool part
+    offset = 1 if college_name in ANNOYING_COLLEGES else 0
+
     # X path to relevant data in html page
     base_path = '//*[@id="block-views-college-views-block-3"]/div/div/div/div/div/div[5]/div[2]/div[{}]/text()'
-    return {'num_undergrad': label_to_num(tree.xpath(base_path.format(1))),
-            'num_year': label_to_num(tree.xpath(base_path.format(2))),
-            'num_grad': label_to_num(tree.xpath(base_path.format(3)))}
 
+    # Somehow these colleges have different X paths despite being generated from the same template presumably?
+    if college_name in SPECIAL_COLLEGES:
+        base_path = '//*[@id="block-views-college-views-block-3"]/div/div/div/div/div/div[4]/div[2]/div[{}]/text()'
 
+    # Return the data in a nice format to be saved back to the database
+    return {'num_undergrad': label_to_num(tree.xpath(base_path.format(offset+1))),
+            'num_year': label_to_num(tree.xpath(base_path.format(offset+2))),
+            'num_grad': label_to_num(tree.xpath(base_path.format(offset+3)))}
 
 def label_to_num(label):
     # Go from ['c120 undergraduates'] to 120
