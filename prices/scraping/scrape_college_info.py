@@ -13,7 +13,7 @@ from prices.models import College
 
 BASE_URL = 'http://www.undergraduate.study.cam.ac.uk/colleges/'
 
-# Annoying cases where colleges don't fit typical naming conventions
+# Atypical cases where colleges don't fit typical naming conventions
 COLLEGE_EXCLUSIONS = {
         'Hughes': 'Hughes Hall',
         'Lucy Cavendish': 'Lucy Cavendish',
